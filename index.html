@@ -151,17 +151,28 @@ code{font-size:.85em;color:var(--acc-hi)}
   .fyll .ritruta{height:100%}
   .fyll #hoger{flex:none}
   /* Six answers three across, as in the other module: two rows instead of six, which hands the
-     structure back roughly 170px of height. The colour moves from a stripe down the left to a bar
-     along the top — at a third of the screen a side stripe is barely visible — and the labels
-     switch to the short forms, which is the only way a third of 375px holds a class name. */
+     structure back roughly 170px of height. The tiles are filled with the class colour rather
+     than striped with it, and the labels switch to the short forms — the only way a third of a
+     375px screen holds a class name. Dark text on all five: every one of the Okabe-Ito colours
+     is light enough to carry it at better than 4.5:1. */
   .val{grid-template-columns:repeat(3,1fr);gap:.4rem}
-  .alt{text-align:center;padding:.45rem .3rem;border-left:1px solid var(--line);
-    border-top:5px solid var(--k,var(--line));
+  .alt{text-align:center;padding:.5rem .3rem;border:1px solid var(--k,var(--line));
+    background:var(--k,var(--panel2));color:#10233a;
     display:flex;align-items:center;justify-content:center;min-height:3.2rem}
-  .alt:hover{border-left-color:var(--k,var(--acc))}
-  .alt b{font-size:.84rem;line-height:1.25}
-  .alt-hjalp{border-left:1px dashed var(--line);border-top:5px dashed var(--line)}
+  .alt:hover{background:var(--k,var(--panel2));border-color:var(--k,var(--line))}
+  .alt b{color:#10233a;font-size:.84rem;line-height:1.25}
+  /* the help tile is not an answer, so it stays dark and dashed */
+  .alt-hjalp{background:var(--panel2);border:1px dashed var(--line)}
+  .alt-hjalp b{color:var(--soft)}
   .prick{display:none}
+  /* On a phone the answer panel is just the verdict. The reasoning and the "nothing is marked"
+     note are the bulk of it and there is no room for them beside a structure that now fills the
+     screen; both are still there on a wider screen, where they cost nothing. */
+  .ej-mobil{display:none}
+  /* the grid gap plus the answer box's own margin came to ~34px of dead space between the
+     structure and the verdict */
+  .ovning{gap:.6rem}
+  .svar{margin-top:0}
   .namn-lang{display:none}
   .namn-kort{display:inline}
 }
@@ -793,9 +804,12 @@ function ritaUppgift() {
   /* No question line here. It is the same question every time, and the five answers say what is
      being asked; printing it above every structure pushed the answers off the bottom of a phone
      screen, so the student had to scroll on all 71. It is stated once on the start page instead. */
-  /* `fyll` only while choosing: once answered the facit comes in and the card is taller than a
-     screen, which is fine — that view scrolls like any other. */
-  app.innerHTML = `<div class="card${fas === 'klass' ? ' fyll' : ''}">
+  /* `fyll` in both phases: the structure takes whatever is left over before AND after answering.
+     It only applied while choosing back when the facit followed the verdict and made the answered
+     card taller than a screen; on a phone the facit is hidden now, so the answer panel is short
+     and the structure should have the rest. If the panel ever is taller than the screen, the
+     structure shrinks to its floor and `main` scrolls, which is the old behaviour. */
+  app.innerHTML = `<div class="card fyll">
     <div class="topprad">
       <!-- nbsp, not a plain space: .rakna is a flex container, which trims the space at the
            edge of a flex item and would print "Struktur1 av 74" -->
@@ -818,7 +832,7 @@ function hogerHTML(u) {
   const ratt = vald === u.klass;
   const facit = `<div class="svar ${ratt ? 'ok' : 'bad'}">
       <b>${ratt ? '✅ Rätt.' : '❌ Inte riktigt.'}</b> Det här är <b>${KLASSER[u.klass].namn}</b>.
-      <div style="margin-top:.5rem">${u.facit}</div></div>`;
+      <div class="ej-mobil" style="margin-top:.5rem">${u.facit}</div></div>`;
   /* The green bar is the way on whether they got it right or wrong, and it is the last thing in
      the answer column, so it is the width of the answers rather than of the whole card. */
   const nasta = `<button class="btn btn-primary bred" onclick="nasta()">${
@@ -832,25 +846,27 @@ function hogerHTML(u) {
 function tecknenHTML(u) {
   /* Deliberately says nothing about WHICH features: this text is shared by vancomycin and
      bleomycin, and they are extreme in different ways. The specifics belong in each facit. */
-  if (u.allt) return `<div class="leta"><b>Markerat i strukturen: allt.</b>
+  if (u.allt) return `<div class="leta"><b>Markerat i strukturen: allt.</b><span class="ej-mobil">
     Det finns ingen enskild detalj att peka på här — <b>nästan ingenting</b> i molekylen är något
     en ribosom skulle kunna göra. Ringar, socker och byggstenar som inte står i den genetiska
-    koden, alltihop på samma gång.</div>`;
+    koden, alltihop på samma gång.</span></div>`;
   const inst = MARKERAR[u.klass] ? bevisInstanser(smilesFor(u), u.bevis) : [];
   if (!inst.length) {
     /* Different reasons for an empty highlight, and they must not share a text. A plain
        ribosomal peptide really has nothing to find; a cyclic RiPP has a modification that is a
        shape rather than an atom; a polyketide is given away by the whole chain and is never
        marked at all. Saying "a ribosome could have built this" would be wrong for the last two. */
-    if (u.opt && u.opt.cyklisk) return `<div class="leta"><b>Ingenting enskilt är markerat.</b>
+    /* All of these say, at length, that there is nothing to look at. On a phone that is a box
+       of prose explaining an absence, so the whole box goes rather than just its text. */
+    if (u.opt && u.opt.cyklisk) return `<div class="leta ej-mobil"><b>Ingenting enskilt är markerat.</b>
       Ändringen är att kedjans båda ändar knutits ihop till en <b>ring</b> — följ ryggraden runt,
       den har varken början eller slut. Det är ingen enskild atom, utan formen.</div>`;
-    if (u.klass === 'RIB') return `<div class="leta"><b>Ingenting är markerat</b>, och det är hela
+    if (u.klass === 'RIB') return `<div class="leta ej-mobil"><b>Ingenting är markerat</b>, och det är hela
       svaret. Det finns inget i strukturen som en ribosom inte kunde ha byggt.</div>`;
-    if (u.klass === 'PKS1' || u.klass === 'PKS2') return `<div class="leta"><b>Ingenting är
+    if (u.klass === 'PKS1' || u.klass === 'PKS2') return `<div class="leta ej-mobil"><b>Ingenting är
       markerat</b>, och det är meningen. En polyketid läser du på <b>helheten</b>: en kedja byggd
       av två- och trekolsenheter, här ${KLASSER[u.klass].kort}. Ingen enstaka grupp avgör.</div>`;
-    return `<div class="leta"><b>Ingenting enskilt är markerat.</b> Här är det <b>helheten</b> som
+    return `<div class="leta ej-mobil"><b>Ingenting enskilt är markerat.</b> Här är det <b>helheten</b> som
       avslöjar molekylen: ${KLASSER[u.klass].kort}. Ingen enstaka grupp räcker.</div>`;
   }
   const namnFor = k => (BEVIS[k] && BEVIS[k].namn) || k;
