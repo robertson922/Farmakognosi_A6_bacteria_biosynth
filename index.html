@@ -593,6 +593,54 @@ function laggKoordinater(mol) {
     if (korsningar(mol.get_molblock()) > 0) mol.set_new_coords(false);
   } catch (e) {}
 }
+/* RDKit lays a molecule out the way a chemist draws it on paper: long axis across the page. The
+   drawing box on a phone is the opposite shape — tall and narrow — so a long molecule is limited
+   by the width and comes out as a thin ribbon with empty space above and below it. A molecule has
+   no canonical "up", so turning it costs nothing and can buy a lot of size.
+   This tries a turn every 15 degrees and returns the one that lets the molecule be drawn largest
+   in the box it actually has.
+   Two things to know:
+   - RDKit's `rotate` turns the drawing CLOCKWISE (SVG's y axis points down), so a candidate angle
+     is applied as -angle when computing the bounding box here. Getting this backwards still looks
+     plausible but picks the wrong angle on anything that is not symmetric.
+   - `fixedBondLength` CAPS the scale, so a molecule small enough to be drawn at full bond length
+     already fills as much as it is allowed to and gains nothing from turning. `tak` is that cap
+     expressed in pixels per molblock unit, and it is part of the comparison for that reason. */
+function bastaVridning(mol, bredd, hojd) {
+  const L = mol.get_molblock().split(/\r?\n/), c = L[3] || '';
+  const na = parseInt(c.substr(0, 3), 10), nb = parseInt(c.substr(3, 3), 10);
+  if (!na) return 0;
+  const P = [];
+  for (let k = 0; k < na; k++) {
+    const r = L[4 + k] || '';
+    P.push([parseFloat(r.substr(0, 10)), parseFloat(r.substr(10, 10))]);
+  }
+  let summa = 0, antal = 0;
+  for (let k = 0; k < nb; k++) {
+    const r = L[4 + na + k] || '';
+    const a = parseInt(r.substr(0, 3), 10) - 1, b = parseInt(r.substr(3, 3), 10) - 1;
+    if (a < 0 || b < 0 || !P[a] || !P[b]) continue;
+    summa += Math.hypot(P[a][0] - P[b][0], P[a][1] - P[b][1]); antal++;
+  }
+  const tak = antal && summa ? 40 / (summa / antal) : Infinity;
+  const skala = vinkel => {
+    const a = -vinkel * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of P) {
+      const X = x * co - y * si, Y = x * si + y * co;
+      if (X < x0) x0 = X; if (X > x1) x1 = X;
+      if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+    }
+    return Math.min(bredd / Math.max(x1 - x0, .01), hojd / Math.max(y1 - y0, .01), tak);
+  };
+  const noll = skala(0);
+  let basta = 0, bast = noll;
+  for (let v = 15; v < 180; v += 15) { const s = skala(v); if (s > bast) { bast = s; basta = v; } }
+  /* Only turn it when there is a real gain. A structure drawn on the slant is unfamiliar to look
+     at, so it has to be worth at least 8% more size; otherwise leave it the way a chemist would
+     have drawn it. */
+  return bast > noll * 1.08 ? basta : 0;
+}
 /* the bonds whose both ends are highlighted, so a marked region reads as a region rather than
    as a row of separate circles */
 function bindningarMellan(mol, atomer) {
@@ -627,7 +675,8 @@ function ritaMolekyl(smiles, markera, bredd, hojd) {
   const detaljer = {
     width: bredd, height: hojd,
     bondLineWidth: 2, scaleBondWidth: false, fixedBondLength: 40,
-    addChiralHs: false, baseFontSize: .55, atomColourPalette: SVART
+    addChiralHs: false, baseFontSize: .55, atomColourPalette: SVART,
+    rotate: bastaVridning(mol, bredd, hojd)
   };
   if (lista.length) {
     detaljer.atoms = lista;
