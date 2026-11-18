@@ -34,10 +34,12 @@ h3{font-size:.95rem;margin:0 0 .2rem;color:#fff}
 .btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:.8rem;
   padding:.6rem 1rem;font-weight:700;cursor:pointer;font-size:.95rem;text-decoration:none;display:inline-block}
 .btn:hover{background:#24375a}
+/* the back button is present on every structure, including the first, so the row of buttons
+   does not shift sideways as the student moves through the set */
+.btn[disabled]{opacity:.35;cursor:default}
+.btn[disabled]:hover{background:var(--panel2)}
 .btn-primary{background:var(--acc);border-color:var(--acc);color:#04221a}
 .btn-primary:hover{background:var(--acc-hi)}
-.fraga{text-align:center;margin:.1rem 0 .9rem;font-size:1.14rem;font-weight:600}
-.fraga span{display:block;margin-top:.25rem;font-size:.84rem;font-weight:400;color:var(--muted)}
 ul.tecken{margin:.4rem 0 0;padding-left:1.1rem}
 ul.tecken li{margin:.15rem 0}
 .btn-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.9rem}
@@ -81,6 +83,12 @@ ul.tecken li{margin:.15rem 0}
   border:1px solid rgba(251,191,36,.5);font-size:.95rem}
 .leta b{color:var(--amber)}
 .rakna{font-size:.9rem;color:var(--muted);margin-bottom:.4rem}
+/* Counter and the two nav buttons as one row above the structure and the answers, spanning the
+   full width of the card: the counter takes what it needs and the two buttons divide the rest. */
+.topprad{display:flex;align-items:stretch;gap:.6rem;margin-bottom:.6rem}
+.topprad .rakna{margin:0;font-size:1.02rem;white-space:nowrap;display:flex;align-items:center}
+.nav{display:flex;gap:.6rem;flex:1}
+.nav .btn{flex:1}
 .poang{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.9rem;color:var(--soft);margin-top:.5rem}
 .poang b{color:#fff}
 
@@ -104,18 +112,39 @@ table.granska{width:100%;border-collapse:collapse;font-size:.86rem}
 table.granska th,table.granska td{border-bottom:1px solid var(--line);padding:.35rem .5rem;text-align:left;vertical-align:top}
 table.granska th{color:var(--acc-hi);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
 code{font-size:.85em;color:var(--acc-hi)}
-textarea{width:100%;min-height:220px;background:#0a1322;color:var(--text);border:1px solid var(--line);
-  border-radius:.6rem;padding:.6rem;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem}
+
+/* ---- phone. These blocks must stay LAST in the stylesheet: they override rules above them at
+   the same specificity, so moving them earlier silently turns them off. ---- */
+/* The title and the two header buttons came to 377px against a 375px screen, so the nav wrapped
+   onto a second line and cost ~48px of height. Trimming the padding keeps the header to one line
+   and the exercise to one screen, which is the whole point: no scrolling on any of the 74. */
+@media(max-width:480px){
+  header{padding:.45rem .55rem;gap:.5rem}
+  .tab{padding:.3rem .6rem;font-size:.82rem}
+  main{padding:.6rem .6rem .1rem}
+  .card{padding:.8rem .85rem;margin-bottom:.6rem}
+  .topprad{gap:.5rem}
+  .rakna-ord{display:none}   /* "Struktur 3 av 74" -> "3 av 74", so the row stays on one line */
+  .nav .btn{padding:.5rem .4rem}
+  /* A phone's address bar takes 80-100px off the nominal screen height, and an older phone is
+     640-667px to begin with. So the structure gives up its 4:3 box and the answers a little
+     padding, and the whole exercise lands on one screen. The drawing keeps its proportions
+     inside the shorter box; it is only shown smaller. */
+  .ritruta{aspect-ratio:auto;height:min(25vh,230px)}
+  .alt{padding:.5rem .7rem}
+  /* at full size "Ribosomal peptid med PTM (RiPP)" wraps onto a second line and costs the list
+     ~19px, which is the difference between fitting and not on a 640px screen */
+  .alt b{font-size:.88rem}
+  .prick{width:.75rem;height:.75rem;margin-right:.4rem}
+  .val{gap:.35rem}
+}
 </style>
 </head>
 <body>
 <header>
   <span class="logo">🧬 Läs strukturen</span>
-  <span class="small muted">vilket maskineri byggde molekylen?</span>
   <nav class="tabs">
-    <button class="tab on" data-vy="ova">Öva</button>
-    <button class="tab" data-vy="granska">Granska</button>
-    <a class="tab" href="../bacteria/index.html">← Till modulen</a>
+    <a class="tab" href="https://robertson922.github.io/Farmakognosi_A6_bacteria/#hem">← Till modulen</a>
   </nav>
 </header>
 <main id="app"></main>
@@ -446,7 +475,7 @@ const UPPGIFTER = [
 { id:'ripp-gly2', klass:'RIPP', bevis:['glykosid'], seq:['G','T','K','L','S','V','A','N','F'], opt:{ per:{ 1:{gly:true} } },
   facit:'Samma sak, men sockret sitter på ett treonin. Sockret är det som syns mest i bilden, men det är kedjan som avgör klassen: nio vanliga aminosyror med fria ändar.' },
 { id:'ripp-gly3', klass:'RIPP', bevis:['glykosid','disulfid'], seq:['C','S','G','K','L','V','C','A'], opt:{ per:{ 0:{ss:'24'}, 6:{ss:'24'}, 1:{gly:true} } },
-  facit:'<b>Två</b> ändringar i samma molekyl: ett påhängt socker och en disulfidbrygga mellan de två cysteinerna. Så ser ett glykocin ut — sublancin 168 bär ett socker och dessutom disulfidbryggor. Markera båda.' },
+  facit:'<b>Två</b> ändringar i samma molekyl: ett påhängt socker och en disulfidbrygga mellan de två cysteinerna. Så ser ett glykocin ut — sublancin 168 bär ett socker och dessutom disulfidbryggor. Båda är markerade.' },
 { id:'ripp-soma', klass:'RIPP', bevis:['disulfid'], seq:['A','G','C','K','N','F','F','W','K','T','F','T','S','C'], opt:{ per:{ 2:{ss:'30'}, 13:{ss:'30'} } },
   facit:'Fjorton vanliga L-aminosyror, och en <b>disulfidbrygga</b> mellan den tredje och den sista. Bryggan sluter nästan hela kedjan till en stor ögla. Det är den formen som gör att peptiden passar in i sin receptor.' },
 { id:'ripp-conot', klass:'RIPP', bevis:['disulfid'], seq:['E','C','C','N','P','A','C','G','R','H','Y','S','C'], opt:{ per:{ 1:{ss:'31'}, 6:{ss:'31'}, 2:{ss:'32'}, 12:{ss:'32'} } },
@@ -595,11 +624,21 @@ function bevisAtomer(smiles, nycklar) {
   bevisInstanser(smiles, nycklar).forEach(x => x.atoms.forEach(a => s.add(a)));
   return s;
 }
+/* WHICH CLASSES MARK ANYTHING. Luke's call, and it is a teaching decision rather than a
+   technical one: a polyketide and a plain ribosomal peptide are read from the whole molecule —
+   the chain of two- and three-carbon units, the flat fused rings, the plain backbone — so
+   lighting up a single lactone or quinone would teach the student to hunt for one group instead
+   of reading the shape. NRPS and RiPP keep their marks, because there the tell really IS a
+   specific group: a methylated nitrogen, an ester in the chain, a sulfur bridge, a sugar.
+   The declared `bevis` are left in the data for the PKS entries, so this is one line to undo. */
+const MARKERAR = { NRPS: true, RIPP: true };
+
 /* What the answer highlights. For most molecules that is the declared tells. For the extreme
    ones (`allt: true`) it is every atom: in vancomycin almost nothing could have come from a
    ribosome, so lighting up two chlorines would understate it badly. The honest answer there is
    the whole molecule, and the text says so. */
 function markeradeAtomer(u) {
+  if (!MARKERAR[u.klass]) return new Set();
   const smi = smilesFor(u);
   if (u.allt) {
     const m = RDK.get_mol(smi);
@@ -612,7 +651,7 @@ function markeradeAtomer(u) {
 }
 
 /* ============================ state ============================ */
-let vy = 'ova', kon = [], i = 0, fas = 'klass', vald = null;
+let kon = [], i = 0, fas = 'klass', vald = null;
 let resultat = [], nyckelOppen = false;
 const blanda = a => { a = a.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
 const nu = () => kon[i];
@@ -623,7 +662,6 @@ function nollstall() { fas = 'klass'; vald = null; }
 const app = document.getElementById('app');
 function rita() {
   ritaNyckel();
-  if (vy === 'granska') return ritaGranska();
   if (!kon.length) return ritaStart();
   if (i >= kon.length) return ritaSlut();
   ritaUppgift();
@@ -634,6 +672,12 @@ function ritaStart() {
     <h1>Läs strukturen</h1>
     <p>Du får se en molekyl utan namn. Frågan är alltid densamma: <b>vilket maskineri byggde
     grundstommen?</b> Svaret står i strukturen. Du behöver aldrig känna igen föreningen.</p>
+    <!-- Only the three modifications the module actually teaches: ring closure, sulfur bridge,
+         sugar. Methylated backbone nitrogens must NOT be listed here — they are an NRPS
+         signature, not something an enzyme hangs on afterwards, and the key says so. -->
+    <p>Fråga efter just <b>stommen</b>. Det som kan ha tillkommit efteråt är <b>ringslutning</b>,
+    <b>svavelbryggor</b> och <b>påhängda socker</b>. Ingen av dem säger något om vilket maskineri
+    som byggde kedjan från början.</p>
     <p>När du svarat <b>markeras det som avslöjar molekylen</b> direkt i strukturen, så att du ser
     var du skulle ha tittat. Låt dig inte luras av ett ensamt kännetecken: det finns peptider här
     som bär en disulfidbrygga eller ett socker och ändå inte är ribosomala. Det är
@@ -642,19 +686,25 @@ function ritaStart() {
     läkemedel hittades; här övar du på att läsa av biosyntesen direkt ur molekylen.</p>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="nyOmgang()">▶ Börja öva (${UPPGIFTER.length} strukturer)</button>
-      <button class="btn" onclick="vaxlaNyckel()">🔑 Visa nyckeln</button>
     </div>
   </div>`;
 }
 
 function ritaUppgift() {
   const u = nu();
-  /* The question sits above both columns rather than on top of the answers, so the buttons start
-     level with the top of the structure and the two columns are the same height. */
+  /* No question line here. It is the same question every time, and the five answers say what is
+     being asked; printing it above every structure pushed the answers off the bottom of a phone
+     screen, so the student had to scroll on all 71. It is stated once on the start page instead. */
   app.innerHTML = `<div class="card">
-    <div class="rakna">Struktur ${i + 1} av ${kon.length}</div>
-    <h2 class="fraga">Vilket maskineri byggde molekylens <b>grundstomme</b>?
-      <span>Socker, metyler och liknande hängs ofta på efteråt av egna enzym. Fråga efter stommen.</span></h2>
+    <div class="topprad">
+      <!-- nbsp, not a plain space: .rakna is a flex container, which trims the space at the
+           edge of a flex item and would print "Struktur1 av 74" -->
+      <div class="rakna"><span class="rakna-ord">Struktur&nbsp;</span>${i + 1} av ${kon.length}</div>
+      <div class="nav">
+        <button class="btn" onclick="foreg()"${i === 0 ? ' disabled' : ''}>◀ Föregående</button>
+        <button class="btn" onclick="nasta()">${i + 1 < kon.length ? 'Nästa ➔' : 'Se resultatet ➔'}</button>
+      </div>
+    </div>
     <div class="ovning">
       <div>${ritrutaHTML(u)}</div>
       <div id="hoger">${hogerHTML(u)}</div>
@@ -678,17 +728,20 @@ function tecknenHTML(u) {
     Det finns ingen enskild detalj att peka på här — <b>nästan ingenting</b> i molekylen är något
     en ribosom skulle kunna göra. Tvärbundna ringar, klor, socker och byggstenar som inte står i
     den genetiska koden, alltihop på samma gång.</div>`;
-  const inst = bevisInstanser(smilesFor(u), u.bevis);
+  const inst = MARKERAR[u.klass] ? bevisInstanser(smilesFor(u), u.bevis) : [];
   if (!inst.length) {
-    /* Three different reasons for an empty highlight, and they must not share a text. A plain
+    /* Different reasons for an empty highlight, and they must not share a text. A plain
        ribosomal peptide really has nothing to find; a cyclic RiPP has a modification that is a
-       shape rather than an atom; a polyketide without a lactone or a quinone is given away by
-       the whole molecule. Saying "a ribosome could have built this" would be wrong for the last two. */
+       shape rather than an atom; a polyketide is given away by the whole chain and is never
+       marked at all. Saying "a ribosome could have built this" would be wrong for the last two. */
     if (u.opt && u.opt.cyklisk) return `<div class="leta"><b>Ingenting enskilt är markerat.</b>
       Ändringen är att kedjans båda ändar knutits ihop till en <b>ring</b> — följ ryggraden runt,
       den har varken början eller slut. Det är ingen enskild atom, utan formen.</div>`;
     if (u.klass === 'RIB') return `<div class="leta"><b>Ingenting är markerat</b>, och det är hela
       svaret. Det finns inget i strukturen som en ribosom inte kunde ha byggt.</div>`;
+    if (u.klass === 'PKS1' || u.klass === 'PKS2') return `<div class="leta"><b>Ingenting är
+      markerat</b>, och det är meningen. En polyketid läser du på <b>helheten</b>: en kedja byggd
+      av två- och trekolsenheter, här ${KLASSER[u.klass].kort}. Ingen enstaka grupp avgör.</div>`;
     return `<div class="leta"><b>Ingenting enskilt är markerat.</b> Här är det <b>helheten</b> som
       avslöjar molekylen: ${KLASSER[u.klass].kort}. Ingen enstaka grupp räcker.</div>`;
   }
@@ -700,11 +753,11 @@ function tecknenHTML(u) {
       return `<li>${namnFor(k)}${n > 1 ? ` <span class="muted">— ${n} ställen</span>` : ''}</li>`;
     }).join('')}</ul></div>`;
 }
+/* Föregående and Nästa live in the top row, above the structure and above the answers, so they
+   sit in the same place whether or not the student has answered and on either layout. */
 function knappar(u) {
   return `<div class="btn-row">
-    ${i > 0 ? `<button class="btn" onclick="foreg()">◀ Föregående</button>` : ''}
-    <button class="btn btn-primary" onclick="nasta()">${i + 1 < kon.length ? 'Nästa ➔' : 'Se resultatet ➔'}</button>
-    <button class="btn" onclick="vaxlaNyckel()">🤔 Påminn mig</button>
+    <button class="btn" onclick="vaxlaNyckel()">🤔 Påminn mig om reglerna</button>
   </div>`;
 }
 /* Just the name on the button. The tells live behind the key, so that answering means reading
@@ -715,7 +768,7 @@ function knappar(u) {
 function valHTML() {
   return `<div class="val">${KLASSORDNING.map(k =>
     `<button class="alt k-${k}" data-k="${k}"><b><span class="prick"></span>${KLASSER[k].namn}</b></button>`).join('')}
-    <button class="alt alt-hjalp" onclick="vaxlaNyckel()"><b>🤔 Jag har glömt — påminn mig om skillnaderna</b></button></div>`;
+    <button class="alt alt-hjalp" onclick="vaxlaNyckel()"><b>🤔 Påminn mig om reglerna</b></button></div>`;
 }
 
 function ritrutaHTML(u) {
@@ -738,12 +791,6 @@ document.addEventListener('click', e => {
     ritaUppgift();
     return;
   }
-  const tab = e.target.closest('.tab[data-vy]');
-  if (tab) {
-    vy = tab.dataset.vy;
-    document.querySelectorAll('.tab[data-vy]').forEach(t => t.classList.toggle('on', t === tab));
-    rita();
-  }
 });
 function nasta() { i++; nollstall(); rita(); }
 function foreg() { if (i > 0) { i--; nollstall(); rita(); } }
@@ -759,7 +806,7 @@ function ritaSlut() {
     <h1>${r} av ${resultat.length} rätt</h1>
     <table class="granska"><tbody>${perKlass}</tbody></table>
     <div class="btn-row"><button class="btn btn-primary" onclick="nyOmgang()">↺ Kör igen</button>
-    <a class="btn" href="../bacteria/index.html">Tillbaka till modulen</a></div>
+    <a class="btn" href="https://robertson922.github.io/Farmakognosi_A6_bacteria/#hem">Tillbaka till modulen</a></div>
   </div>`;
 }
 
@@ -778,35 +825,6 @@ function ritaNyckel() {
       <div class="small tecken">${KLASSER[k].tecken.join('<span class="sep">·</span>')}</div>
     </div>`).join('')}
   </div></div>`;
-}
-
-/* ============================ granska (för Luke) ============================ */
-function ritaGranska() {
-  const rader = UPPGIFTER.map(u => {
-    const smi = smilesFor(u);
-    const n = (u.bevis || []).length && RDK ? bevisAtomer(smi, u.bevis).size : 0;
-    let atomer = '–';
-    if (RDK) { const m = RDK.get_mol(smi); if (m) { atomer = m.get_num_atoms(); m.delete(); } else atomer = '<b style="color:var(--bad)">PARSE-FEL</b>'; }
-    return `<tr><td>${u.id}</td><td>${u.seq ? 'byggd peptid' : 'struktur'}</td><td>${KLASSER[u.klass].namn}</td>
-      <td>${(u.bevis || []).join(', ') || '–'}</td><td>${n}</td><td>${atomer}</td></tr>`;
-  }).join('');
-  const antal = KLASSORDNING.map(k => `${KLASSER[k].namn}: <b>${UPPGIFTER.filter(u => u.klass === k).length}</b>`).join(' · ');
-  app.innerHTML = `<div class="card">
-    <h1>Granska</h1>
-    <p class="small">${antal} — totalt <b>${UPPGIFTER.length}</b>.</p>
-    <p class="small">Facit för markeringarna <b>räknas fram</b> med substruktursökning (SMARTS), inte för hand.
-    Tabellen visar hur många atomer sökningen träffar i varje struktur, så att du kan se om den träffar rätt.
-    Peptiderna byggs ur sina sekvenser i <code>data.js</code>, så ritningen kan aldrig glida isär från sekvensen.</p>
-    <table class="granska"><thead><tr><th>id</th><th>typ</th><th>klass</th><th>bevis</th><th>facit (atomer)</th><th>storlek</th></tr></thead>
-    <tbody>${rader}</tbody></table>
-    <h2 style="margin-top:1.2rem">Mönstren</h2>
-    <table class="granska"><thead><tr><th>nyckel</th><th>namn</th><th>SMARTS</th><th>klass</th></tr></thead><tbody>
-    ${Object.entries(BEVIS).map(([k, b]) => `<tr><td>${k}</td><td>${b.namn}</td><td><code>${b.smarts.replace(/</g, '&lt;')}</code></td><td>${b.klass}</td></tr>`).join('')}
-    </tbody></table>
-    <h2 style="margin-top:1.2rem">Byggda peptider som SMILES</h2>
-    <p class="small muted">Så här ser de genererade strukturerna ut, om du vill kontrollera någon av dem i ett ritprogram.</p>
-    <textarea readonly>${UPPGIFTER.filter(u => u.seq).map(u => `${u.id}\t${u.seq.join('-')}\t${smilesFor(u)}`).join('\n')}</textarea>
-  </div>`;
 }
 
 startRDKit();
