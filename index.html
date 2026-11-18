@@ -58,8 +58,17 @@ ul.tecken li{margin:.15rem 0}
   #hoger .val{flex:1;grid-template-rows:repeat(6,minmax(0,1fr))}
   #hoger .alt{display:flex;align-items:center}
 }
-.ritruta{background:#fff;border-radius:.9rem;overflow:hidden;position:relative;aspect-ratio:4/3}
-.ritruta svg{width:100%;height:100%;display:block}
+/* touch-action:none so a finger on the structure pans and pinches it instead of scrolling the
+   page. It applies to the box only, so the page still scrolls normally everywhere else. */
+.ritruta{background:#fff;border-radius:.9rem;overflow:hidden;position:relative;aspect-ratio:4/3;
+  touch-action:none;cursor:grab}
+.rityta{position:absolute;inset:0}
+.ritruta svg{width:100%;height:100%;display:block;transform-origin:center center}
+.zoom{position:absolute;top:.45rem;left:.45rem;display:flex;gap:.3rem;z-index:2}
+.zoom-knapp{width:2rem;height:2rem;border-radius:.55rem;border:1px solid #475569;background:#1e293b;
+  color:#f8fafc;font-size:1.05rem;font-weight:700;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(15,23,42,.3)}
+.zoom-knapp:hover{background:#334155}
 .hitbox{cursor:pointer;transition:fill .1s}
 .hitbox:hover{fill:rgba(52,211,153,.35)}
 .vald{fill:rgba(52,211,153,.5);stroke:#059669;stroke-width:2}
@@ -641,6 +650,18 @@ function bastaVridning(mol, bredd, hojd) {
      have drawn it. */
   return bast > noll * 1.08 ? basta : 0;
 }
+/* A molecule must keep ONE orientation the whole time the student is looking at it. The box is a
+   little shorter once the answer panel appears, and asking bastaVridning again for that slightly
+   different box could return a different angle — so the structure appeared to spin the moment the
+   student answered, which reads as a different molecule rather than the same one.
+   So the angle is worked out once per molecule per box SHAPE (upright or lying down) and reused.
+   Turning the phone changes the shape and is allowed to pick a new angle; answering is not. */
+const vridCache = {};
+function vridningFor(mol, smiles, bredd, hojd) {
+  const nyckel = smiles + '|' + (hojd >= bredd ? 'P' : 'L');
+  if (vridCache[nyckel] === undefined) vridCache[nyckel] = bastaVridning(mol, bredd, hojd);
+  return vridCache[nyckel];
+}
 /* the bonds whose both ends are highlighted, so a marked region reads as a region rather than
    as a row of separate circles */
 function bindningarMellan(mol, atomer) {
@@ -676,7 +697,7 @@ function ritaMolekyl(smiles, markera, bredd, hojd) {
     width: bredd, height: hojd,
     bondLineWidth: 2, scaleBondWidth: false, fixedBondLength: 40,
     addChiralHs: false, baseFontSize: .55, atomColourPalette: SVART,
-    rotate: bastaVridning(mol, bredd, hojd)
+    rotate: vridningFor(mol, smiles, bredd, hojd)
   };
   if (lista.length) {
     detaljer.atoms = lista;
@@ -845,6 +866,8 @@ function ritaStart() {
     var du skulle ha tittat. Låt dig inte luras av ett ensamt kännetecken: det finns peptider här
     som bär en disulfidbrygga eller ett socker och ändå inte är ribosomala. Det är
     <b>byggstenarna</b> som avgör.</p>
+    <p class="small muted">Strukturen går att <b>zooma</b>: nyp eller scrolla, dra för att flytta,
+    och <b>⟲</b> uppe till vänster lägger tillbaka den som den var.</p>
     <p class="small muted">Det här är den strukturella sidan av Upptäcktsresan. Där följer du hur ett
     läkemedel hittades; här övar du på att läsa av biosyntesen direkt ur molekylen.</p>
     <div class="btn-row">
@@ -962,19 +985,111 @@ function valHTML() {
    grew but the molecule stayed small, with dead bands above and below it. */
 function ritrutaHTML(u) {
   if (rdkFel) return `<div class="card small muted">Strukturen kunde inte ritas. Kontrollera internetanslutningen och ladda om sidan.</div>`;
-  return `<div class="ritruta" id="ritruta"></div>`;
+  /* The drawing goes in its own layer inside the box: the zoom buttons are siblings of it, so
+     redrawing the molecule cannot wipe them. */
+  return `<div class="ritruta" id="ritruta"><div class="rityta" id="rityta"></div>
+    <div class="zoom">
+      <button class="zoom-knapp" onclick="zooma(1/1.25)" title="Zooma ut" aria-label="Zooma ut">−</button>
+      <button class="zoom-knapp" onclick="zooma(1.25)" title="Zooma in" aria-label="Zooma in">+</button>
+      <button class="zoom-knapp" onclick="aterstallVy()" title="Återställ vyn" aria-label="Återställ vyn">⟲</button>
+    </div></div>`;
 }
 function fyllRitruta(u) {
-  const ruta = document.getElementById('ritruta');
-  if (!ruta || !RDK) return;
+  const ruta = document.getElementById('ritruta'), yta = document.getElementById('rityta');
+  if (!ruta || !yta || !RDK) return;
   /* rounded to 20px so that stepping back and forth, or a hair of layout drift, still hits the
      same cache entry instead of re-rendering the molecule */
   const b = Math.max(240, Math.round(ruta.clientWidth / 20) * 20);
   const h = Math.max(200, Math.round(ruta.clientHeight / 20) * 20);
   const r = ritaMolekyl(smilesFor(u), fas === 'klar' ? markeradeAtomer(u) : null, b, h);
-  ruta.innerHTML = r ? r.svg
+  yta.innerHTML = r ? r.svg
     : `<div class="small" style="padding:1rem;color:#333">Strukturen kunde inte ritas.</div>`;
+  aterstallVy();
 }
+/* ---- zoom and pan, as in the pathway module: drag to move, wheel or pinch to zoom ----
+   This is a plain CSS transform on the drawn SVG. The molecule is NOT redrawn while zooming, so
+   the lines get thicker as you go in, the way a photograph does — redrawing at a new scale would
+   be sharper but would also re-lay-out the structure under the student's finger. */
+let vy = { skala: 1, x: 0, y: 0 };
+function visaVy() {
+  const s = document.querySelector('#rityta svg');
+  if (s) s.style.transform = `translate(${vy.x}px,${vy.y}px) scale(${vy.skala})`;
+}
+function zooma(faktor) {
+  vy.skala = Math.max(.6, Math.min(8, vy.skala * faktor));
+  visaVy();
+}
+function aterstallVy() { vy = { skala: 1, x: 0, y: 0 }; visaVy(); }
+/* Bound once to the document, not to the box: the box is rebuilt on every structure and on every
+   answer, so listeners put on the box itself would pile up or be lost. */
+function kopplaVy() {
+  const fingrar = new Map();   // pointerId -> position, for the fingers on the drawing
+  let drag = null, nyp = null;
+  const mitten = () => {
+    const r = document.getElementById('ritruta').getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+  const tva = () => {
+    const [a, b] = [...fingrar.values()];
+    return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  };
+  const ruta = e => (e.target.closest ? e.target.closest('.ritruta') : null);
+  document.addEventListener('wheel', e => {
+    if (!ruta(e)) return;
+    e.preventDefault();          // the page must not scroll out from under the structure
+    zooma(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+  }, { passive: false });
+  document.addEventListener('pointerdown', e => {
+    const r = ruta(e);
+    if (!r || e.target.closest('.zoom')) return;
+    if (e.pointerType === 'touch') {
+      fingrar.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingrar.size === 2) {
+        drag = null;             // a second finger ends the one-finger drag and starts a pinch
+        const t = tva();
+        nyp = { d: t.d, mx: t.mx, my: t.my, skala: vy.skala, x: vy.x, y: vy.y };
+        return;
+      }
+      if (fingrar.size > 2) return;
+    } else if (e.button !== 0) return;
+    drag = { sx: e.clientX, sy: e.clientY, ox: vy.x, oy: vy.y };
+    r.style.cursor = 'grabbing';
+  });
+  addEventListener('pointermove', e => {
+    if (fingrar.has(e.pointerId)) fingrar.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (nyp && fingrar.size >= 2) {
+      const t = tva(), c = mitten();
+      const ny = Math.max(.6, Math.min(8, nyp.skala * (t.d / nyp.d)));
+      // keep the point between the fingers under them while the pinch grows or moves
+      const qx = (nyp.mx - c.x - nyp.x) / nyp.skala, qy = (nyp.my - c.y - nyp.y) / nyp.skala;
+      vy = { skala: ny, x: t.mx - c.x - ny * qx, y: t.my - c.y - ny * qy };
+      visaVy();
+      return;
+    }
+    if (!drag) return;
+    vy.x = drag.ox + (e.clientX - drag.sx);
+    vy.y = drag.oy + (e.clientY - drag.sy);
+    visaVy();
+  });
+  const slut = e => {
+    if (fingrar.has(e.pointerId)) {
+      fingrar.delete(e.pointerId);
+      if (fingrar.size < 2) nyp = null;
+    }
+    drag = null;
+    const r = document.getElementById('ritruta');
+    if (r) r.style.cursor = 'grab';
+  };
+  addEventListener('pointerup', slut);
+  addEventListener('pointercancel', slut);
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey || !document.getElementById('ritruta')) return;
+    if (e.key === '+' || e.key === '=') zooma(1.25);
+    else if (e.key === '-' || e.key === '_') zooma(1 / 1.25);
+    else if (e.key === '0') aterstallVy();
+  });
+}
+kopplaVy();
 /* ---- flow ---- */
 document.addEventListener('click', e => {
   const alt = e.target.closest('.alt[data-k]');
