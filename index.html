@@ -40,6 +40,10 @@ h3{font-size:.95rem;margin:0 0 .2rem;color:#fff}
 .btn[disabled]:hover{background:var(--panel2)}
 .btn-primary{background:var(--acc);border-color:var(--acc);color:#04221a}
 .btn-primary:hover{background:var(--acc-hi)}
+/* the two buttons under an answer — the green way on, and the reminder below it when the answer
+   was wrong. Both the full width of the ANSWER COLUMN, not of the card, so they line up with the
+   answer buttons the student just chose from. */
+.bred{display:block;width:100%;margin-top:.8rem;padding:.8rem 1rem;font-size:1.02rem;text-align:center}
 ul.tecken{margin:.4rem 0 0;padding-left:1.1rem}
 ul.tecken li{margin:.15rem 0}
 .btn-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.9rem}
@@ -273,7 +277,14 @@ const BEVIS = {
   // a run of plain CH2 groups: a fatty acid built into the peptide. No plocka, so anywhere along
   // the chain counts — it is a stretch of the molecule rather than a single point. A polyketide
   // chain does not match, because its carbons carry oxygens and are CH, not CH2.
-  fettsyra:   { namn: 'Fettsyrasvans',           smarts: '[CH2][CH2][CH2][CH2][CH2][CH2]', klass: 'NRPS' },
+  // `vaxa` then grows the mark out to the WHOLE tail: the run of six is only a foothold, and on
+  // its own it stopped at the first double bond and left most of echinocandin's chain unmarked.
+  fettsyra:   { namn: 'Fettsyrasvans',           smarts: '[CH2][CH2][CH2][CH2][CH2][CH2]', vaxa: 'kedja', klass: 'NRPS' },
+  // the phenoxazinone core of actinomycin: a six-ring carrying BOTH an oxygen and a nitrogen,
+  // which no sugar, macrolactone or amino acid ring in this set does. `vaxa` then takes the
+  // whole fused tricycle, because the lesson is that the core is not an amino acid at all —
+  // lighting up one ring of three would understate it.
+  aromkarna:  { namn: 'Aromatisk kärna — ingen aminosyra', smarts: '[#8;r6]1~[#6;r6]~[#6;r6]~[#7;r6]~[#6;r6]~[#6;r6]1', vaxa: 'ringsystem', klass: 'NRPS' },
   // narrowed from "any ring sulfur" once the lanthionine bridge below became a RiPP marker:
   // sulfur sharing a five-ring with a nitrogen is a thiazole/thiazoline, which no RiPP here has.
   // Matches bacitracin's thiazoline and penicillin's thiazolidine, both S-C-N-C-C around the
@@ -285,8 +296,10 @@ const BEVIS = {
   // sits next to a CH3, and the thiazoles above because theirs sit next to ring carbons.
   tioeterbrygga: { namn: 'Tioeterbrygga (lantionin)', smarts: '[CX4H2][#16X2H0][CX4H2]', plocka: [0, 1, 2], klass: 'RIPP' },
   // the glycosidic bond: a ring carbon bearing both its own ring oxygen and an exocyclic
-  // O or S that leads out to the peptide.
-  glykosid:   { namn: 'Påhängt socker (glykosidbindning)', smarts: '[CX4;R]([OX2;R])[OX2H0,SX2H0;!R][CX4;!R]', plocka: [1, 2], klass: 'RIPP' },
+  // O or S that leads out to the peptide. `vaxa` then lights up the WHOLE sugar — ring, every
+  // OH and the CH2OH — rather than the two atoms of the bond, which is what the student is
+  // actually being asked to recognise.
+  glykosid:   { namn: 'Påhängt socker (glykosidbindning)', smarts: '[CX4;R]([OX2;R])[OX2H0,SX2H0;!R][CX4;!R]', plocka: [1, 2], vaxa: 'socker', klass: 'RIPP' },
   lakton:     { namn: 'Makrolakton (ringester)', smarts: '[CX3;R](=[OX1])[OX2;R][#6;R]', plocka: [0, 1, 2], klass: 'PKS1' },
   // a para-quinone written out in full. "Any ring carbonyl" also lit up the lactone in every
   // macrolide, which would have taught the opposite of the point.
@@ -311,8 +324,6 @@ const UPPGIFTER = [
   facit:'En fjortonledad makrolakton med två socker. Epoxiden är tillagd efteråt av ett eget enzym, men ringen och metylerna avslöjar polyketiden.' },
 { id:'pk1-tylo', klass:'PKS1', bevis:['lakton'], smiles:'CC[C@@H]1[C@H](/C=C(/C=C/C(=O)[C@@H](C[C@@H]([C@@H]([C@H]([C@@H](CC(=O)O1)O)C)O[C@H]2[C@@H]([C@H]([C@@H]([C@H](O2)C)O[C@H]3C[C@@]([C@H]([C@@H](O3)C)O)(C)O)N(C)C)O)CC=O)C)\\C)CO[C@H]4[C@@H]([C@@H]([C@@H]([C@H](O4)C)O)OC)OC',
   facit:'Makrolakton med tre påhängda socker och en aldehydgrupp. Dubbelbindningarna sitter kvar där modulen hoppade över reduktionssteget.' },
-{ id:'pk1-iver', klass:'PKS1', bevis:['lakton'], smiles:'CC[C@H](C)[C@@H]1[C@H](CC[C@@]2(O1)C[C@@H]3C[C@H](O2)C/C=C(/[C@H]([C@H](/C=C/C=C/4\\CO[C@H]5[C@@]4([C@@H](C=C([C@H]5O)C)C(=O)O3)O)C)O[C@H]6C[C@@H]([C@H]([C@@H](O6)C)O[C@H]7C[C@@H]([C@H]([C@@H](O7)C)O)OC)OC)\\C)C',
-  facit:'Makrolakton med påhängda socker och en kedja där syret sitter med jämna mellanrum. Flera ringar har bildats inne i molekylen, men grunden är en acetatbyggd kedja.' },
 { id:'pk1-epo', klass:'PKS1', bevis:['lakton'], smiles:'C[C@H]1CCC[C@@]2([C@@H](O2)C[C@H](OC(=O)C[C@@H](C(C(=O)[C@@H]([C@H]1O)C)(C)C)O)/C(=C/C3=CSC(=N3)C)/C)C',
   facit:'Mindre ring än de andra, men samma drag: ester i ringen, metylgrupper utmed kedjan, syre med jämna mellanrum. Tiazolringen i svansen kommer från en NRPS-modul — maskinerierna samarbetar ofta.' },
 { id:'pk1-lova', klass:'PKS1', bevis:['lakton'], smiles:'CC[C@H](C)C(=O)O[C@H]1C[C@H](C=C2[C@H]1[C@H]([C@H](C=C2)C)CC[C@@H]3C[C@H](CC(=O)O3)O)C',
@@ -325,8 +336,6 @@ const UPPGIFTER = [
   facit:'En sextonledad makrolakton med <b>tre</b> påhängda socker och en aldehydgrupp ut från ringen. Kvävena sitter alla i sockren, aldrig i kedjan. Det är därför detta inte är en peptid trots att molekylen innehåller kväve.' },
 { id:'pk1-josa', klass:'PKS1', bevis:['lakton'], smiles:'C[C@@H]1C/C=C/C=C/[C@@H]([C@@H](C[C@@H]([C@@H]([C@H]([C@@H](CC(=O)O1)OC(=O)C)OC)O[C@H]2[C@@H]([C@H]([C@@H]([C@H](O2)C)O[C@H]3C[C@@]([C@H]([C@@H](O3)C)OC(=O)CC(C)C)(C)O)N(C)C)O)CC=O)C)O',
   facit:'Samma familj som föregående: makrolakton, dubbelbindningar i rad, socker. Här sitter dessutom två små fettsyraestrar påhängda på ringen och på ett av sockren — tillagda efteråt av egna enzym.' },
-{ id:'pk1-bafi', klass:'PKS1', bevis:['lakton'], smiles:'C[C@H]1C/C(=C/C=C/[C@@H]([C@H](OC(=O)/C(=C/C(=C/[C@H]([C@H]1O)C)/C)/OC)[C@@H](C)[C@H]([C@H](C)[C@]2(C[C@H]([C@@H]([C@H](O2)C(C)C)C)O)O)O)OC)/C',
-  facit:'Makrolakton utan socker: en ring sluten med en ester, metylgrupper utmed hela kedjan och en sidokedja som slutits till en liten syrering. Inga amidbindningar någonstans.' },
 { id:'pk1-salino', klass:'PKS1', bevis:[], smiles:'CC[C@H]([C@H]1CC[C@@H]([C@@H](O1)[C@@H](C)[C@@H]([C@H](C)C(=O)[C@H](CC)[C@@H]2[C@H](C[C@H]([C@]3(O2)C=C[C@H]([C@@]4(O3)CC[C@@](O4)(C)[C@H]5CC[C@@]([C@@H](O5)C)(CC)O)O)C)C)O)C)C(=O)O',
   facit:'En polyeter, som monensinet: ingen ring sluten med ester, utan en rad syreringar efter varandra och en fri syragrupp i ena änden. Metylerna med jämna mellanrum är kvar. Det är dem du känner igen polyketiden på.' },
 
@@ -360,8 +369,6 @@ const UPPGIFTER = [
    item needs no clickable tell — but the facit must not promise a quinone that is not there. */
 { id:'pk2-tetraceno', klass:'PKS2', bevis:[], smiles:'CC1=C(C(=CC2=CC3=C(C(=C12)O)C(=O)[C@@]4(C(=O)C=C([C@H]([C@@]4(C3=O)O)O)OC)O)OC)C(=O)OC',
   facit:'Fyra hopvuxna ringar, men den sista är bara delvis aromatisk — syresättningen har inte hunnit lika långt som i de andra. Det platta, styva ringsystemet och syrena med jämna mellanrum är ändå typ II-signaturen. Inga socker alls.' },
-{ id:'pk2-grana', klass:'PKS2', bevis:['kinon'], smiles:'C[C@@H]1[C@]2([C@@H](C[C@@H](O1)C3=C2C(=C4C(=C3O)C(=O)C5=C(C4=O)C(O[C@@H]6[C@H]5OC(=O)C6)C)O)O)O',
-  facit:'Kinonen och de hopvuxna aromatiska ringarna ger klassen. Sockret här är inte påhängt med en syrebrygga utan sitter med en kol-kolbindning rakt in i ringsystemet.' },
 
 /* ---------- NRPS: real natural products ---------- */
 { id:'nr-peng', klass:'NRPS', bevis:['betalaktam','tiazol'], smiles:'CC1([C@@H](N2[C@H](S1)[C@@H](C2=O)NC(=O)CC3=CC=CC=C3)C(=O)O)C',
@@ -380,7 +387,7 @@ const UPPGIFTER = [
    have an amide, which is the NRPS lesson. `lakton` stays a polyketide marker only. */
 { id:'nr-surf', klass:'NRPS', bevis:['depsi','fettsyra'], smiles:'CC(C)CCCCCCCCC[C@@H]1CC(=O)N[C@H](C(=O)N[C@H](C(=O)N[C@@H](C(=O)N[C@H](C(=O)N[C@H](C(=O)N[C@@H](C(=O)N[C@H](C(=O)O1)CC(C)C)CC(C)C)CC(=O)O)C(C)C)CC(C)C)CC(C)C)CCC(=O)O',
   facit:'En peptidring med en lång fettsyrasvans inbyggd och en esterbindning som sluter ringen. Fettsyran är inget en ribosom kan foga in i en peptid.' },
-{ id:'nr-actD', klass:'NRPS', bevis:['nmetyl','depsi'], smiles:'C[C@@H]1[C@@H](C(=O)N[C@@H](C(=O)N2CCC[C@H]2C(=O)N(CC(=O)N([C@H](C(=O)O1)C(C)C)C)C)C(C)C)NC(=O)C3=C4C(=C(C=C3)C)OC5=C(C(=O)C(=C(C5=N4)C(=O)N[C@H]6[C@H](OC(=O)[C@@H](N(C(=O)CN(C(=O)[C@@H]7CCCN7C(=O)[C@H](NC6=O)C(C)C)C)C)C(C)C)C)N)C',
+{ id:'nr-actD', klass:'NRPS', bevis:['nmetyl','depsi','aromkarna'], smiles:'C[C@@H]1[C@@H](C(=O)N[C@@H](C(=O)N2CCC[C@H]2C(=O)N(CC(=O)N([C@H](C(=O)O1)C(C)C)C)C)C(C)C)NC(=O)C3=C4C(=C(C=C3)C)OC5=C(C(=O)C(=C(C5=N4)C(=O)N[C@H]6[C@H](OC(=O)[C@@H](N(C(=O)CN(C(=O)[C@@H]7CCCN7C(=O)[C@H](NC6=O)C(C)C)C)C)C(C)C)C)N)C',
   facit:'Två peptidringar hängda på en aromatisk kärna. Ringarna bär metylerade kväven och esterbindningar; kärnan är inte en aminosyra alls. Ingenting här kan ha kommit från en ribosom.' },
 { id:'nr-bacit', klass:'NRPS', bevis:['tiazol'], smiles:'CC[C@H](C)[C@H]1C(=O)N[C@@H](C(=O)N[C@H](C(=O)N[C@@H](C(=O)N[C@H](C(=O)NCCCC[C@@H](C(=O)N[C@@H](C(=O)N1)CCCN)NC(=O)[C@H]([C@@H](C)CC)NC(=O)[C@@H](CCC(=O)O)NC(=O)[C@H](CC(C)C)NC(=O)[C@@H]2CSC(=N2)[C@H]([C@@H](C)CC)N)CC(=O)N)CC(=O)O)CC3=CN=CN3)CC4=CC=CC=C4',
   facit:'En peptid med en tiazolinring i ena änden — bildad ur ett cystein av NRPS-maskineriet självt, och en ringslutning via en sidokedja i stället för via C-änden.' },
@@ -395,11 +402,7 @@ const UPPGIFTER = [
    pattern-matches on one feature instead of reading the building blocks, and the facit says so
    outright. They only became fair once the clicking was removed: while the student had to mark
    atoms, a correct observation ("that is a disulfide") was scored as a wrong answer. */
-{ id:'nr-romi', klass:'NRPS', bevis:['disulfid','depsi'], smiles:'C/C=C\\1/C(=O)N[C@H](C(=O)O[C@H]\\2CC(=O)N[C@@H](C(=O)N[C@H](CSSCC/C=C2)C(=O)N1)C(C)C)C(C)C',
-  facit:'Här sitter en riktig <b>disulfidbrygga</b>, och ändå är det ingen RiPP. Titta i stället på kedjan: en <b>ester</b> står där en amidbindning borde stå, och bryggan går inte mellan två cysteiner utan ut i en kolkedja som inte är någon aminosyra alls. <b>En disulfid ensam avgör ingenting.</b> Det är byggstenarna som gör det.' },
-{ id:'nr-glio', klass:'NRPS', bevis:['disulfid','nmetyl'], smiles:'CN1C(=O)[C@]23CC4=CC=C[C@@H]([C@H]4N2C(=O)[C@]1(SS3)CO)O',
-  facit:'Ännu en <b>disulfid</b>, och ännu en gång är svaret NRPS. Bryggan sitter tvärs över en liten dubbelring, inte mellan två cysteiner i en kedja, och kvävet bär en <b>metylgrupp</b>. Två aminosyror har knutits ihop till en ring och sedan byggts om så kraftigt att ingen peptidkedja återstår.' },
-{ id:'nr-bleo', klass:'NRPS', bevis:['tiazol','glykosid'], smiles:'CC1=C(N=C(N=C1N)[C@H](CC(=O)N)NC[C@@H](C(=O)N)N)C(=O)N[C@@H]([C@H](C2=CN=CN2)O[C@H]3[C@H]([C@H]([C@@H]([C@@H](O3)CO)O)O)O[C@@H]4[C@H]([C@H]([C@@H]([C@H](O4)CO)O)OC(=O)N)O)C(=O)N[C@H](C)[C@H]([C@H](C)C(=O)N[C@@H]([C@@H](C)O)C(=O)NCCC5=NC(=CS5)C6=NC(=CS6)C(=O)NCCC[S+](C)C)O',
+{ id:'nr-bleo', klass:'NRPS', bevis:['tiazol','glykosid'], allt:true, smiles:'CC1=C(N=C(N=C1N)[C@H](CC(=O)N)NC[C@@H](C(=O)N)N)C(=O)N[C@@H]([C@H](C2=CN=CN2)O[C@H]3[C@H]([C@H]([C@@H]([C@@H](O3)CO)O)O)O[C@@H]4[C@H]([C@H]([C@@H]([C@H](O4)CO)O)OC(=O)N)O)C(=O)N[C@H](C)[C@H]([C@H](C)C(=O)N[C@@H]([C@@H](C)O)C(=O)NCCC5=NC(=CS5)C6=NC(=CS6)C(=O)NCCC[S+](C)C)O',
   facit:'<b>Socker</b> påhängt på en sidokedja — tecknet som annars pekar mot en RiPP. Men se vad mer som finns: två <b>tiazolringar</b> efter varandra, och en kedja full av ringar som inte är aminosyror. Ett socker säger bara att något enzym varit framme efteråt; det säger ingenting om vem som byggde stommen.' },
 { id:'nr-ekino', klass:'NRPS', bevis:['fettsyra'], smiles:'CCCCC/C=C\\C/C=C\\CCCCCCCC(=O)N[C@H]1C[C@H]([C@H](NC(=O)[C@@H]2[C@H]([C@H](CN2C(=O)[C@@H](NC(=O)[C@@H](NC(=O)[C@@H]3C[C@H](CN3C(=O)[C@@H](NC1=O)[C@@H](C)O)O)[C@@H]([C@H](C4=CC=C(C=C4)O)O)O)[C@@H](C)O)C)O)O)O',
   facit:'En ring av sex aminosyror, men titta på dem: nästan varenda en bär extra OH-grupper på ställen där en vanlig aminosyra inte har några. Och ut från ringen går en lång <b>fettsyrasvans</b>. Ringen ensam avgör ingenting; byggstenarna och fettsyran gör det.' },
@@ -478,8 +481,6 @@ const UPPGIFTER = [
   facit:'<b>Två</b> ändringar i samma molekyl: ett påhängt socker och en disulfidbrygga mellan de två cysteinerna. Så ser ett glykocin ut — sublancin 168 bär ett socker och dessutom disulfidbryggor. Båda är markerade.' },
 { id:'ripp-soma', klass:'RIPP', bevis:['disulfid'], seq:['A','G','C','K','N','F','F','W','K','T','F','T','S','C'], opt:{ per:{ 2:{ss:'30'}, 13:{ss:'30'} } },
   facit:'Fjorton vanliga L-aminosyror, och en <b>disulfidbrygga</b> mellan den tredje och den sista. Bryggan sluter nästan hela kedjan till en stor ögla. Det är den formen som gör att peptiden passar in i sin receptor.' },
-{ id:'ripp-conot', klass:'RIPP', bevis:['disulfid'], seq:['E','C','C','N','P','A','C','G','R','H','Y','S','C'], opt:{ per:{ 1:{ss:'31'}, 6:{ss:'31'}, 2:{ss:'32'}, 12:{ss:'32'} } },
-  facit:'Fyra cysteiner och <b>två</b> disulfidbryggor i en kort kedja. Så är konsnäckornas gifter byggda: ribosomen gör en helt vanlig peptid, och bryggorna knyter den sedan så hårt att den tål att injiceras i ett byte. Samma princip som i zikonotid, konsnäckepeptiden du mött i modulen.' },
 { id:'ripp-lan4', klass:'RIPP', bevis:['tioeterbrygga'], seq:['S','C','T','K','A','L','G','V','F'], opt:{ per:{ 1:{ss:'33'}, 4:{ss:'33'} } },
   facit:'Leta efter svavlet: ett ensamt svavel mellan två kolkedjor binder ihop rest två och rest fem. Det är en <b>tioeterbrygga</b>, samma slags ändring som i nisin, men här bara en.' },
 { id:'ripp-gly4', klass:'RIPP', bevis:['glykosid'], seq:['K','T','G','L','N','V','S','F','A','D'], opt:{ per:{ 6:{gly:true} } },
@@ -598,20 +599,89 @@ function ritaMolekyl(smiles, markera) {
    not asked to click all fourteen atoms, only to find an example of each kind of tell. So the
    evidence is kept grouped by instance, and marking any atom of any instance counts as having
    found that kind. The facit still shows every instance, so they see how common it is. */
+/* The molecule as a plain graph — symbols, neighbours with bond order, and which atoms sit in a
+   ring. Read out of the molblock we already parse elsewhere, plus one ring query to RDKit. */
+function molGraf(mol) {
+  const L = mol.get_molblock().split(/\r?\n/), c = L[3] || '';
+  const na = parseInt(c.substr(0, 3), 10), nb = parseInt(c.substr(3, 3), 10);
+  const sym = [], gran = [];
+  if (!na) return null;
+  for (let k = 0; k < na; k++) { sym.push(((L[4 + k] || '').substr(31, 3)).trim()); gran.push([]); }
+  for (let k = 0; k < nb; k++) {
+    const rad = L[4 + na + k] || '';
+    const a = parseInt(rad.substr(0, 3), 10) - 1, b = parseInt(rad.substr(3, 3), 10) - 1;
+    const ordning = parseInt(rad.substr(6, 3), 10) || 1;
+    if (a < 0 || b < 0) continue;
+    gran[a].push({ t: b, ordning }); gran[b].push({ t: a, ordning });
+  }
+  const ring = new Set();
+  const q = RDK.get_qmol('[R]');
+  if (q) {
+    try { JSON.parse(mol.get_substruct_matches(q) || '[]').forEach(m => (m.atoms || []).forEach(a => ring.add(a))); } catch (e) {}
+    q.delete();
+  }
+  return { sym, gran, ring };
+}
+/* Grow a highlight from the atoms a pattern matched out to the whole group a student would name.
+   The SMARTS only has to FIND the thing; this decides how much of it lights up.
+     'kedja'      the fatty tail: follow acyclic carbons out in both directions and take the
+                  carbonyl oxygen along, stopping at a ring or at the amide nitrogen. The run of
+                  six CH2 stops dead at the first double bond on its own, which left most of
+                  echinocandin's tail dark.
+     'socker'     the whole sugar: flood from the anomeric carbon but never cross the glycosidic
+                  oxygen, so the ring, every OH and the CH2OH come along and the peptide does
+                  not. Works because the sugar hangs off that one bond and nothing else.
+     'ringsystem' every ring fused to the matched one, plus the atoms hanging off it that lead
+                  nowhere else (=O, NH2, CH3), so a fused core lights up as a single block. The
+                  links out to the peptide are not taken: those carbons carry more than one bond. */
+function vaxUt(graf, start, sort, spar) {
+  const med = new Set(start), ko = start.slice(), stopp = new Set(spar || []);
+  while (ko.length) {
+    const a = ko.pop();
+    (graf.gran[a] || []).forEach(({ t, ordning }) => {
+      if (med.has(t)) return;
+      if (sort === 'kedja') {
+        if (graf.sym[t] === 'O' && ordning === 2) { med.add(t); return; }
+        if (graf.sym[t] !== 'C' || graf.ring.has(t)) return;
+      } else if (sort === 'ringsystem') {
+        if (!graf.ring.has(t)) { if ((graf.gran[t] || []).length === 1) med.add(t); return; }
+      } else if (stopp.has(t)) { med.add(t); return; }
+      med.add(t); ko.push(t);
+    });
+  }
+  return [...med];
+}
 function bevisInstanser(smiles, nycklar) {
   const ut = [];
   if (!RDK) return ut;
   const mol = RDK.get_mol(smiles);
   if (!mol) return ut;
+  let graf;
   (nycklar || []).forEach(k => {
     const b = BEVIS[k]; if (!b) return;
     const q = RDK.get_qmol(b.smarts);
     if (!q) return;
+    /* Two matches that grow into the same atoms are ONE instance: a nine-carbon tail contains
+       several overlapping runs of six CH2, and saying "Fettsyrasvans — 3 ställen" for a single
+       tail would be worse than saying nothing. */
+    const sedda = new Set();
     try {
       JSON.parse(mol.get_substruct_matches(q) || '[]').forEach(t => {
         const a = t.atoms || [];
-        const atoms = (b.plocka || a.map((_, n) => n)).map(n => a[n]).filter(x => x !== undefined);
-        if (atoms.length) ut.push({ nyckel: k, atoms });
+        let atoms = (b.plocka || a.map((_, n) => n)).map(n => a[n]).filter(x => x !== undefined);
+        if (b.vaxa && atoms.length) {
+          if (graf === undefined) graf = molGraf(mol);
+          if (graf) {
+            const fran = b.vaxa === 'socker' ? [a[0]] : atoms;
+            const spar = b.vaxa === 'socker' ? [a[2]] : [];
+            if (fran.every(x => x !== undefined)) atoms = vaxUt(graf, fran, b.vaxa, spar);
+          }
+        }
+        if (!atoms.length) return;
+        const nyckel = atoms.slice().sort((x, y) => x - y).join(',');
+        if (sedda.has(nyckel)) return;
+        sedda.add(nyckel);
+        ut.push({ nyckel: k, atoms });
       });
     } catch (e) {}
     q.delete();
@@ -718,16 +788,23 @@ function hogerHTML(u) {
   const facit = `<div class="svar ${ratt ? 'ok' : 'bad'}">
       <b>${ratt ? '✅ Rätt.' : '❌ Inte riktigt.'}</b> Det här är <b>${KLASSER[u.klass].namn}</b>.
       <div style="margin-top:.5rem">${u.facit}</div></div>`;
-  return facit + tecknenHTML(u) + knappar(u);
+  /* The green bar is the way on whether they got it right or wrong, and it is the last thing in
+     the answer column, so it is the width of the answers rather than of the whole card. */
+  const nasta = `<button class="btn btn-primary bred" onclick="nasta()">${
+    i + 1 < kon.length ? 'Nästa struktur ➔' : 'Se resultatet ➔'}</button>`;
+  /* Green first, reminder under it: the way on is the main action even when they got it wrong. */
+  return facit + tecknenHTML(u) + nasta + knappar(u);
 }
 /* The student classifies; the answer then points out the evidence itself. Hunting for the atoms
    by clicking was dropped — it tested whether they could find a needle, not whether they could
    read the structure, and for the tangled molecules there was no single needle to find. */
 function tecknenHTML(u) {
+  /* Deliberately says nothing about WHICH features: this text is shared by vancomycin and
+     bleomycin, and they are extreme in different ways. The specifics belong in each facit. */
   if (u.allt) return `<div class="leta"><b>Markerat i strukturen: allt.</b>
     Det finns ingen enskild detalj att peka på här — <b>nästan ingenting</b> i molekylen är något
-    en ribosom skulle kunna göra. Tvärbundna ringar, klor, socker och byggstenar som inte står i
-    den genetiska koden, alltihop på samma gång.</div>`;
+    en ribosom skulle kunna göra. Ringar, socker och byggstenar som inte står i den genetiska
+    koden, alltihop på samma gång.</div>`;
   const inst = MARKERAR[u.klass] ? bevisInstanser(smilesFor(u), u.bevis) : [];
   if (!inst.length) {
     /* Different reasons for an empty highlight, and they must not share a text. A plain
@@ -754,11 +831,12 @@ function tecknenHTML(u) {
     }).join('')}</ul></div>`;
 }
 /* Föregående and Nästa live in the top row, above the structure and above the answers, so they
-   sit in the same place whether or not the student has answered and on either layout. */
+   sit in the same place whether or not the student has answered and on either layout.
+   The reminder is offered only after a WRONG answer — that is the student who needs the rules.
+   A correct answer gets the green bar across the card instead, and nothing else to weigh up. */
 function knappar(u) {
-  return `<div class="btn-row">
-    <button class="btn" onclick="vaxlaNyckel()">🤔 Påminn mig om reglerna</button>
-  </div>`;
+  if (vald === u.klass) return '';
+  return `<button class="btn bred" onclick="vaxlaNyckel()">🤔 Påminn mig om reglerna</button>`;
 }
 /* Just the name on the button. The tells live behind the key, so that answering means reading
    the structure rather than matching the structure against a hint printed next to the answer. */
