@@ -80,6 +80,7 @@ ul.tecken li{margin:.15rem 0}
   margin-right:.45rem;vertical-align:-1px;flex:none}
 .alt-hjalp{border-style:dashed;border-left:7px dashed var(--line);color:var(--soft);font-weight:600}
 .alt-hjalp b{color:var(--soft);font-weight:600}
+.namn-kort{display:none}   /* the phone grid swaps these two round */
 .svar{margin-top:.9rem;padding:.8rem 1rem;border-radius:.8rem;font-size:.95rem}
 .svar.ok{background:var(--acc-bg);border:1px solid var(--acc)}
 .svar.bad{background:var(--bad-bg);border:1px solid var(--bad)}
@@ -135,12 +136,34 @@ code{font-size:.85em;color:var(--acc-hi)}
      padding, and the whole exercise lands on one screen. The drawing keeps its proportions
      inside the shorter box; it is only shown smaller. */
   .ritruta{aspect-ratio:auto;height:min(25vh,230px)}
-  .alt{padding:.5rem .7rem}
-  /* at full size "Ribosomal peptid med PTM (RiPP)" wraps onto a second line and costs the list
-     ~19px, which is the difference between fitting and not on a 640px screen */
-  .alt b{font-size:.88rem}
-  .prick{width:.75rem;height:.75rem;margin-right:.4rem}
-  .val{gap:.35rem}
+  /* While the student is choosing, the exercise is exactly one screen tall and the STRUCTURE
+     takes whatever the answers leave over — so a tall phone draws a bigger structure instead of
+     leaving dead space at the bottom, and a short one still fits. The fixed height above is what
+     the answered view falls back to, where the facit has to fit as well.
+     100dvh rather than 100vh: on a phone vh counts the strip behind the address bar, which is
+     not actually on screen, so 100vh would overflow by exactly that much. */
+  body{height:100vh;height:100dvh;display:flex;flex-direction:column}
+  header{position:static}
+  main{flex:1;min-height:0;overflow-y:auto}
+  .fyll{display:flex;flex-direction:column;height:100%;margin-bottom:0}
+  .fyll .ovning{flex:1;min-height:0;display:flex;flex-direction:column;gap:.6rem}
+  .fyll .ovning > div:first-child{flex:1;min-height:120px}
+  .fyll .ritruta{height:100%}
+  .fyll #hoger{flex:none}
+  /* Six answers three across, as in the other module: two rows instead of six, which hands the
+     structure back roughly 170px of height. The colour moves from a stripe down the left to a bar
+     along the top — at a third of the screen a side stripe is barely visible — and the labels
+     switch to the short forms, which is the only way a third of 375px holds a class name. */
+  .val{grid-template-columns:repeat(3,1fr);gap:.4rem}
+  .alt{text-align:center;padding:.45rem .3rem;border-left:1px solid var(--line);
+    border-top:5px solid var(--k,var(--line));
+    display:flex;align-items:center;justify-content:center;min-height:3.2rem}
+  .alt:hover{border-left-color:var(--k,var(--acc))}
+  .alt b{font-size:.84rem;line-height:1.25}
+  .alt-hjalp{border-left:1px dashed var(--line);border-top:5px dashed var(--line)}
+  .prick{display:none}
+  .namn-lang{display:none}
+  .namn-kort{display:inline}
 }
 </style>
 </head>
@@ -234,17 +257,21 @@ function byggPeptid(seq, opt) {
 const KLASSER = {
   /* `tecken` is deliberately terse: the reminder has to fit on screen without scrolling, and a
      student who has forgotten the difference needs a prompt, not a lecture. */
-  PKS1: { namn: 'Polyketid, PKS typ I', kort: 'stor böjlig ring',
+  /* `etikett` is the short label for the 3-wide grid of answers on a phone, where a third of the
+     screen has to hold it. Luke's wording: the antiSMASH cluster names, which the students meet
+     again if they ever run a genome through it. Both labels are rendered and CSS shows one, so
+     they cannot drift apart in JS. */
+  PKS1: { namn: 'Polyketid, PKS typ I', etikett: 'T1PKS', kort: 'stor böjlig ring',
     tecken: ['sluten med en <b>ester</b>', 'syre och metyler utmed kedjan', 'inga amidbindningar'] },
-  PKS2: { namn: 'Polyketid, PKS typ II', kort: 'platt och styv',
+  PKS2: { namn: 'Polyketid, PKS typ II', etikett: 'T2PKS', kort: 'platt och styv',
     tecken: ['<b>hopvuxna aromatiska ringar</b>, ofta en kinon', 'aldrig en stor böjlig ring'] },
-  NRPS: { namn: 'Icke-ribosomal peptid (NRPS)', kort: 'ser knappt ut som en peptid alls',
+  NRPS: { namn: 'Icke-ribosomal peptid (NRPS)', etikett: 'NRPS', kort: 'ser knappt ut som en peptid alls',
     tecken: ['<b>tvärbundna ringar</b> och <b>klor</b>', '<b>metylerade kväven</b>, och då många',
              '<b>ester</b> i kedjan där amid borde stå', '<b>fettsyrasvans</b> inbyggd i peptiden',
              'β-laktam eller tiazolring'] },
-  RIB:  { namn: 'Ribosomal peptid', kort: 'peptid, och det är allt',
+  RIB:  { namn: 'Ribosomal peptid', etikett: 'Ribosomal peptid', kort: 'peptid, och det är allt',
     tecken: ['rak kedja, fria ändar', 'bara vanliga byggstenar'] },
-  RIPP: { namn: 'Ribosomal peptid med PTM (RiPP)', kort: 'vanliga byggstenar, men ihopknuten',
+  RIPP: { namn: 'Ribosomal peptid med PTM (RiPP)', etikett: 'RiPP', kort: 'vanliga byggstenar, men ihopknuten',
     tecken: ['<b>svavelbrygga</b> mellan två rester — S–S eller bara S',
              '<b>ringsluten</b> ände mot ände', '<b>socker</b> påhängt på en sidokedja',
              '<b>men</b> byggstenarna måste vara vanliga, annars är det NRPS'] }
@@ -564,9 +591,10 @@ function bindningarMellan(mol, atomer) {
   }
   return ut;
 }
-function ritaMolekyl(smiles, markera) {
+function ritaMolekyl(smiles, markera, bredd, hojd) {
+  bredd = bredd || 760; hojd = hojd || 590;
   const lista = markera ? [...markera].sort((a, b) => a - b) : [];
-  const nyckel = smiles + '|' + lista.join(',');
+  const nyckel = smiles + '|' + lista.join(',') + '|' + bredd + 'x' + hojd;
   if (svgCache[nyckel]) return svgCache[nyckel];
   const mol = RDK.get_mol(smiles);
   if (!mol) return null;
@@ -581,7 +609,7 @@ function ritaMolekyl(smiles, markera) {
      canvas is still scaled down to fit. So emodin and daptomycin now share a line weight and
      very nearly a bond length. */
   const detaljer = {
-    width: 760, height: 590,
+    width: bredd, height: hojd,
     bondLineWidth: 2, scaleBondWidth: false, fixedBondLength: 40,
     addChiralHs: false, baseFontSize: .55, atomColourPalette: SVART
   };
@@ -765,7 +793,9 @@ function ritaUppgift() {
   /* No question line here. It is the same question every time, and the five answers say what is
      being asked; printing it above every structure pushed the answers off the bottom of a phone
      screen, so the student had to scroll on all 71. It is stated once on the start page instead. */
-  app.innerHTML = `<div class="card">
+  /* `fyll` only while choosing: once answered the facit comes in and the card is taller than a
+     screen, which is fine — that view scrolls like any other. */
+  app.innerHTML = `<div class="card${fas === 'klass' ? ' fyll' : ''}">
     <div class="topprad">
       <!-- nbsp, not a plain space: .rakna is a flex container, which trims the space at the
            edge of a flex item and would print "Struktur1 av 74" -->
@@ -780,6 +810,7 @@ function ritaUppgift() {
       <div id="hoger">${hogerHTML(u)}</div>
     </div>
   </div>`;
+  fyllRitruta(u);
 }
 
 function hogerHTML(u) {
@@ -843,18 +874,36 @@ function knappar(u) {
 /* Just the name on the button, each in its own colour. The tells sit behind the last button in
    the same box, so the reminder is where the student is already looking — and so the six
    together fill the same height as the structure beside them. */
+/* Both the full name and the short one go into the markup; CSS shows whichever fits. On a phone
+   the six answers sit three across, so a third of the screen has to hold the label. */
 function valHTML() {
+  const text = (lang, kort) =>
+    `<span class="namn-lang">${lang}</span><span class="namn-kort">${kort}</span>`;
   return `<div class="val">${KLASSORDNING.map(k =>
-    `<button class="alt k-${k}" data-k="${k}"><b><span class="prick"></span>${KLASSER[k].namn}</b></button>`).join('')}
-    <button class="alt alt-hjalp" onclick="vaxlaNyckel()"><b>🤔 Påminn mig om reglerna</b></button></div>`;
+    `<button class="alt k-${k}" data-k="${k}"><b><span class="prick"></span>${
+      text(KLASSER[k].namn, KLASSER[k].etikett)}</b></button>`).join('')}
+    <button class="alt alt-hjalp" onclick="vaxlaNyckel()"><b>${
+      text('🤔 Påminn mig om reglerna', '🤔 Reglerna')}</b></button></div>`;
 }
 
+/* The box goes in empty and the drawing is added once the browser has laid it out, so RDKit can
+   be given a canvas the SHAPE of the box it will sit in. It used to be a fixed 760x590 landscape
+   canvas: on a phone, where the box is tall and narrow, that letterboxed badly — the white area
+   grew but the molecule stayed small, with dead bands above and below it. */
 function ritrutaHTML(u) {
   if (rdkFel) return `<div class="card small muted">Strukturen kunde inte ritas. Kontrollera internetanslutningen och ladda om sidan.</div>`;
-  if (!RDK) return `<div class="ritruta"></div>`;
-  const r = ritaMolekyl(smilesFor(u), fas === 'klar' ? markeradeAtomer(u) : null);
-  if (!r) return `<div class="card small muted">Strukturen kunde inte ritas.</div>`;
-  return `<div class="ritruta" id="ritruta">${r.svg}</div>`;
+  return `<div class="ritruta" id="ritruta"></div>`;
+}
+function fyllRitruta(u) {
+  const ruta = document.getElementById('ritruta');
+  if (!ruta || !RDK) return;
+  /* rounded to 20px so that stepping back and forth, or a hair of layout drift, still hits the
+     same cache entry instead of re-rendering the molecule */
+  const b = Math.max(240, Math.round(ruta.clientWidth / 20) * 20);
+  const h = Math.max(200, Math.round(ruta.clientHeight / 20) * 20);
+  const r = ritaMolekyl(smilesFor(u), fas === 'klar' ? markeradeAtomer(u) : null, b, h);
+  ruta.innerHTML = r ? r.svg
+    : `<div class="small" style="padding:1rem;color:#333">Strukturen kunde inte ritas.</div>`;
 }
 /* ---- flow ---- */
 document.addEventListener('click', e => {
@@ -869,6 +918,13 @@ document.addEventListener('click', e => {
     ritaUppgift();
     return;
   }
+});
+/* The drawing is sized to the box, so turning the phone or resizing the window has to redraw it,
+   or the molecule keeps the shape of the old screen. Debounced: a drag resizes continuously. */
+let omritning;
+addEventListener('resize', () => {
+  clearTimeout(omritning);
+  omritning = setTimeout(() => { if (kon.length && i < kon.length) rita(); }, 200);
 });
 function nasta() { i++; nollstall(); rita(); }
 function foreg() { if (i > 0) { i--; nollstall(); rita(); } }
