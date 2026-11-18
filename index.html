@@ -144,7 +144,12 @@ code{font-size:.85em;color:var(--acc-hi)}
      not actually on screen, so 100vh would overflow by exactly that much. */
   body{height:100vh;height:100dvh;display:flex;flex-direction:column}
   header{position:static}
-  main{flex:1;min-height:0;overflow-y:auto}
+  /* width:100% is load-bearing. `main` has `margin:0 auto` from the base rules, and auto
+     cross-axis margins on a flex item switch OFF stretch alignment — so once body became a flex
+     column, main shrank to its content's max-content width. That made the card's outer border
+     jump about (412 -> 349 -> 329px) depending on how wide the answer panel's text happened to
+     be. An explicit width removes the free space the auto margins were eating. */
+  main{flex:1;min-height:0;overflow-y:auto;width:100%}
   .fyll{display:flex;flex-direction:column;height:100%;margin-bottom:0}
   .fyll .ovning{flex:1;min-height:0;display:flex;flex-direction:column;gap:.6rem}
   .fyll .ovning > div:first-child{flex:1;min-height:120px}
